@@ -5,6 +5,7 @@ BigInt.prototype.toJSON = function () {
 import express from 'express';
 import { config ,supabase,supabaseConfig} from './config.js';
 import userRoutes from './src/routes/user.routes.js';
+import threadRoutes from './src/routes/thread.routes.js';
 
 // Initialize Express app
 const app = express();
@@ -42,7 +43,7 @@ app.get('/api/test', (req, res) => {
 });
 
 app.use('/api/users', userRoutes);
-
+app.use('/api/threads', threadRoutes);
 // Start server
 app.listen(config.port, () => {
   console.log(`🚀 Server running on http://localhost:${config.port}`);
