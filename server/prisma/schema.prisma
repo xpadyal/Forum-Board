@@ -1,0 +1,65 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        BigInt     @id @default(autoincrement())
+  username  String     @unique
+  email     String     @unique
+  password  String
+  role      String     @default("user")
+  threads   Thread[]
+  comments  Comment[]
+  createdAt DateTime   @default(now())
+}
+
+model Thread {
+  id          BigInt        @id @default(autoincrement())
+  title       String
+  content     String
+  authorId    BigInt
+  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments    Comment[]      @relation("ThreadComments")
+  attachments Attachment[]
+  isLocked    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([authorId])
+}
+
+model Comment {
+  id          BigInt      @id @default(autoincrement())
+  content     String
+  authorId    BigInt
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  threadId    BigInt?
+  thread      Thread?     @relation("ThreadComments", fields: [threadId], references: [id], onDelete: Cascade)
+  parentId    BigInt?
+  parent      Comment?    @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[]   @relation("CommentReplies")
+  isDeleted   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([threadId])
+  @@index([parentId])
+}
+
+model Attachment {
+  id          BigInt     @id @default(autoincrement())
+  threadId    BigInt
+  thread      Thread     @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  fileUrl     String
+  mimeType    String?
+  uploadedAt  DateTime   @default(now())
+
+  @@index([threadId])
+}
+
+
