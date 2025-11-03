@@ -1,5 +1,10 @@
+BigInt.prototype.toJSON = function () {
+    return this.toString();
+  };
+
 import express from 'express';
-import { config, supabase, supabaseConfig } from './config.js';
+import { config ,supabase,supabaseConfig} from './config.js';
+import userRoutes from './src/routes/user.routes.js';
 
 // Initialize Express app
 const app = express();
@@ -35,6 +40,8 @@ app.get('/api/health', async (req, res) => {
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Forum Board API is running!' });
 });
+
+app.use('/api/users', userRoutes);
 
 // Start server
 app.listen(config.port, () => {

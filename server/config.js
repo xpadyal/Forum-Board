@@ -38,3 +38,4 @@ process.on('beforeExit', async () => {
   await prisma.$disconnect();
 });
 
+export const jwtSecret = process.env.JWT_SECRET;
