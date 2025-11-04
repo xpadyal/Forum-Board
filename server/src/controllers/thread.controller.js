@@ -2,14 +2,15 @@ import * as threadService from '../service/thread.service.js';
 
 /**
  * POST /api/threads
+ * Body: { title, content, attachments?: [{ fileUrl, mimeType }] }
  */
 export const createThread = async (req, res, next) => {
     try {
-      const { title, content } = req.body;
+      const { title, content, attachments } = req.body;
       // Convert string ID from JWT to BigInt for Prisma
       const authorId = BigInt(req.user.id);
   
-      const thread = await threadService.createThread(authorId, title, content);
+      const thread = await threadService.createThread(authorId, title, content, attachments || []);
       res.status(201).json(thread);
     } catch (err) {
       next(err);
@@ -18,11 +19,14 @@ export const createThread = async (req, res, next) => {
 
 /**
  * GET /api/threads
+ * Query params: page (default: 1), limit (default: 10)
  */
 export const getAllThreads = async (req, res, next) => {
     try {
-      const threads = await threadService.getAllThreads();
-      res.json(threads);
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const result = await threadService.getAllThreads(page, limit);
+      res.json(result);
     } catch (err) {
       next(err);
     }

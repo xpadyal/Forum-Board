@@ -57,7 +57,59 @@ tests/
 server/uploads/
 server/temp/
 
-# Client specific (Vite)
+# Client specific (Next.js)
+client/.next/
+client/out/
+client/build/
 client/dist/
 client/.vite/
+client/.turbo/
+
+# Next.js
+.next/
+out/
+build/
+.vercel
+.vercel.json
+
+# Frontend build artifacts
+*.tsbuildinfo
+.eslintcache
+
+# React / Next.js
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local env files
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing
+coverage/
+.nyc_output/
+.jest/
+
+# Storybook
+storybook-static/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
 

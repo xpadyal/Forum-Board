@@ -6,15 +6,18 @@ import OpenAI from "openai";
 // Load environment variables from .env file FIRST
 dotenv.config();
 
-// Initialize OpenAI client after loading env variables
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI client after loading env variables (optional - only needed for moderation)
+export const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  : null;
 
 // Server configuration
 export const config = {
   port: process.env.PORT || 3001,
   nodeEnv: process.env.NODE_ENV || 'development',
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 };
 
 // Supabase configuration

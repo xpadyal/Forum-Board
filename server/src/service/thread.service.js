@@ -2,7 +2,7 @@ import { prisma } from '../../config.js';
 import { moderateText } from '../utils/moderation.js';
 import { generateAutoReply } from '../utils/autoReply.js';
 import { setTimeout } from 'timers/promises';
-export const createThread = async (authorId, title, content) => {
+export const createThread = async (authorId, title, content, attachments = []) => {
     // Moderate both title and content before creating thread
     try {
       await moderateText(title);
@@ -14,9 +14,18 @@ export const createThread = async (authorId, title, content) => {
           authorId, 
           title, 
           content,
-          moderationStatus: 'approved'
+          moderationStatus: 'approved',
+          attachments: attachments.length > 0 ? {
+            create: attachments.map(att => ({
+              fileUrl: att.fileUrl,
+              mimeType: att.mimeType,
+            }))
+          } : undefined,
         },
-        include: { author: { select: { id: true, username: true } } },
+        include: { 
+          author: { select: { id: true, username: true } },
+          attachments: true,
+        },
       });
       // Run delayed reply asynchronously (non-blocking)
       (async () => {
@@ -35,17 +44,40 @@ export const createThread = async (authorId, title, content) => {
     }
   };
 
-export const getAllThreads = async () => {
-  return await prisma.thread.findMany({
+export const getAllThreads = async (page = 1, limit = 10) => {
+  const skip = (page - 1) * limit;
+  
+  // Get total count for pagination metadata
+  const total = await prisma.thread.count({
+    where: {
+      moderationStatus: 'approved',
+    },
+  });
+
+  const threads = await prisma.thread.findMany({
     where: {
       moderationStatus: 'approved', // Only show approved threads
     },
     orderBy: { createdAt: 'desc' },
     include: {
       author: { select: { username: true } },
+      attachments: true, // Include attachments in thread listing
       _count: { select: { comments: true } },
     },
+    skip,
+    take: limit,
   });
+
+  return {
+    threads,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasMore: skip + threads.length < total,
+    },
+  };
 };
 
 export const getThreadById = async (id) => {

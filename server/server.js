@@ -3,6 +3,7 @@ BigInt.prototype.toJSON = function () {
   };
 
 import express from 'express';
+import cors from 'cors';
 import { config ,supabase,supabaseConfig} from './config.js';
 import userRoutes from './src/routes/user.routes.js';
 import threadRoutes from './src/routes/thread.routes.js';
@@ -15,7 +16,16 @@ import uploadRoutes from './src/routes/upload.routes.js';
 // Initialize Express app
 const app = express();
 
+// CORS configuration
+const corsOptions = {
+  origin: config.frontendUrl,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
 // Middleware
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Routes

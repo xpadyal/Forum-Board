@@ -4,8 +4,15 @@ import { AppError } from "./appError.js";
 /**
  * Moderate user-generated text using OpenAI's free omni-moderation-latest model.
  * Returns `true` if content is safe, throws AppError otherwise.
+ * If OpenAI API key is not configured, moderation is skipped and returns true.
  */
 export async function moderateText(content) {
+  // Skip moderation if OpenAI is not configured
+  if (!openai) {
+    console.warn("OpenAI API key not configured. Skipping content moderation.");
+    return true;
+  }
+
   try {
     const res = await openai.moderations.create({
       model: "omni-moderation-latest",
