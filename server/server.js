@@ -38,5 +38,5 @@ app.listen(config.port, () => {
 });
 
 // Export app and supabase for use in other files
-export { app, supabase };
+export {app};
 
