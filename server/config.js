@@ -1,15 +1,15 @@
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaClient } from '@prisma/client';
-import OpenAI from "openai";
+import Groq from "groq-sdk";
 
 // Load environment variables from .env file FIRST
 dotenv.config();
 
-// Initialize OpenAI client after loading env variables (optional - only needed for moderation)
-export const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+// Initialize Groq client for moderation (using llama-guard-4-12b)
+export const groq = process.env.GROQ_API_KEY
+  ? new Groq({
+      apiKey: process.env.GROQ_API_KEY,
     })
   : null;
 

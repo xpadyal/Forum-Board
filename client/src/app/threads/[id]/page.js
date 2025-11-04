@@ -50,6 +50,11 @@ export default function ThreadDetailPage() {
     e.preventDefault();
     setCommentError("");
 
+    // Prevent duplicate submissions
+    if (createCommentMutation.isPending) {
+      return;
+    }
+
     if (!commentContent.trim()) {
       setCommentError("Comment cannot be empty");
       return;

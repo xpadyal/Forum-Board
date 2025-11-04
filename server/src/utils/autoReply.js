@@ -1,9 +1,11 @@
-import Groq from "groq-sdk";
-import { prisma } from "../../config.js";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { groq, prisma } from "../../config.js";
 
 export async function generateAutoReply(thread) {
+  if (!groq) {
+    console.warn("Groq API key not configured. Skipping auto-reply.");
+    return;
+  }
+
   try {
     const prompt = `
 You are ForumBot, a friendly and helpful AI who replies to new forum threads.

@@ -13,6 +13,9 @@ export function Providers({ children }) {
             staleTime: 60 * 1000, // 1 minute
             refetchOnWindowFocus: false,
           },
+          mutations: {
+            retry: 0, // Don't retry mutations to avoid duplicate API calls
+          },
         },
       })
   );

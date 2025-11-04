@@ -29,6 +29,11 @@ export default function Comment({ comment, threadId, depth = 0, maxDepth = 5 }) 
     e.preventDefault();
     setReplyError("");
 
+    // Prevent duplicate submissions
+    if (createReplyMutation.isPending) {
+      return;
+    }
+
     if (!replyContent.trim()) {
       setReplyError("Reply cannot be empty");
       return;
