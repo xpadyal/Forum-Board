@@ -10,6 +10,7 @@ import commentRoutes from './src/routes/comment.routes.js';
 import { healthCheck } from './src/controllers/health.controller.js';
 import errorHandler from './src/middleware/error.middleware.js';
 import { AppError } from './src/utils/appError.js';
+import uploadRoutes from './src/routes/upload.routes.js';
 
 // Initialize Express app
 const app = express();
@@ -22,7 +23,7 @@ app.get('/api/health', healthCheck);
 app.use('/api/users', userRoutes);
 app.use('/api/threads', threadRoutes);
 app.use('/api/comments', commentRoutes);
-
+app.use('/api/uploads', uploadRoutes);
 app.use((req, res, next) => {
   next(new AppError(`Route ${req.originalUrl} not found`, 404));
 });

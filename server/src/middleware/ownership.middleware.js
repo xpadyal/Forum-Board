@@ -28,7 +28,6 @@ export const verifyOwnership = (type) => {
         }
   
         // Check if user is the owner or admin
-        // Compare BigInt values properly
         if (req.user.role !== 'admin' && resource.authorId !== userId) {
           return next(new AppError('Not authorized to modify this resource', 403));
         }
