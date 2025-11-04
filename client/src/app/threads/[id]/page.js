@@ -20,6 +20,7 @@ export default function ThreadDetailPage() {
   const [commentError, setCommentError] = useState("");
   const [enablePolling, setEnablePolling] = useState(false);
   const pollingTimeoutRef = useRef(null);
+  const initialPollingTimeoutRef = useRef(null);
 
   // Enable polling after comment creation, disable after 10 seconds
   useEffect(() => {
@@ -49,6 +50,42 @@ export default function ThreadDetailPage() {
     // Keep refetching even when window is not focused
     refetchIntervalInBackground: enablePolling,
   });
+
+  // Enable polling for ForumBot's initial reply to new threads
+  useEffect(() => {
+    if (thread) {
+      const commentCount = thread._count?.comments || 0;
+      const hasForumBotComment = thread.comments?.some(
+        (comment) => comment.author?.username === "ForumBot" || comment.author?.username?.toLowerCase() === "forumbot"
+      );
+
+      // If thread has no comments yet, ForumBot might reply (3 second delay)
+      // Poll for up to 15 seconds to catch ForumBot's reply
+      if (commentCount === 0 && !hasForumBotComment) {
+        setEnablePolling(true);
+
+        // Stop polling after 15 seconds if ForumBot hasn't replied
+        if (initialPollingTimeoutRef.current) {
+          clearTimeout(initialPollingTimeoutRef.current);
+        }
+        initialPollingTimeoutRef.current = setTimeout(() => {
+          setEnablePolling(false);
+        }, 15000);
+      } else if (hasForumBotComment) {
+        // ForumBot has already replied, stop polling
+        setEnablePolling(false);
+        if (initialPollingTimeoutRef.current) {
+          clearTimeout(initialPollingTimeoutRef.current);
+        }
+      }
+
+      return () => {
+        if (initialPollingTimeoutRef.current) {
+          clearTimeout(initialPollingTimeoutRef.current);
+        }
+      };
+    }
+  }, [thread]);
 
   const createCommentMutation = useMutation({
     mutationFn: createComment,

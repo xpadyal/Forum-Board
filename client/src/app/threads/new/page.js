@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 export default function NewThreadPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { isAuth } = useAuth();
+  const { isAuth, isLoading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -20,19 +20,23 @@ export default function NewThreadPage() {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (!isAuth) {
+    // Only redirect if auth check is complete and user is not authenticated
+    if (!authLoading && !isAuth) {
       router.push("/login?redirect=/threads/new");
     }
-  }, [isAuth, router]);
+  }, [isAuth, authLoading, router]);
 
   const createThreadMutation = useMutation({
     mutationFn: createThread,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["threads"] });
       // Redirect to the newly created thread detail page
-      if (data?.id) {
-        router.push(`/threads/${data.id}`);
+      // The API response might be wrapped in a data property or directly contain the thread
+      const threadId = data?.id || data?.data?.id;
+      if (threadId) {
+        router.push(`/threads/${threadId}`);
       } else {
+        console.error("Thread creation response missing ID:", data);
         router.push("/threads");
       }
     },
@@ -114,6 +118,22 @@ export default function NewThreadPage() {
       });
     }
   };
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-gray-600 dark:text-gray-400">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render form if not authenticated (will redirect)
+  if (!isAuth) {
+    return null;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
