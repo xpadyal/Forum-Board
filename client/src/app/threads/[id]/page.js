@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { isAuthenticated } from "@/lib/authApi";
+import Comment from "@/components/Comment";
 
 export default function ThreadDetailPage() {
   const params = useParams();
@@ -263,36 +264,12 @@ export default function ThreadDetailPage() {
                 key={comment.id}
                 className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0"
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {comment.author?.username || "Unknown"}
-                  </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(comment.createdAt).toLocaleString()}
-                  </span>
-                </div>
-                <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                  {comment.content}
-                </p>
-                {comment.replies && comment.replies.length > 0 && (
-                  <div className="mt-3 ml-6 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
-                    {comment.replies.map((reply) => (
-                      <div key={reply.id} className="mb-3 last:mb-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                            {reply.author?.username || "Unknown"}
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(reply.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                          {reply.content}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <Comment
+                  comment={comment}
+                  threadId={threadId}
+                  depth={0}
+                  maxDepth={5}
+                />
               </div>
             ))}
           </div>
