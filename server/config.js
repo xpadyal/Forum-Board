@@ -1,9 +1,15 @@
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaClient } from '@prisma/client';
+import OpenAI from "openai";
 
-// Load environment variables from .env file
+// Load environment variables from .env file FIRST
 dotenv.config();
+
+// Initialize OpenAI client after loading env variables
+export const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // Server configuration
 export const config = {

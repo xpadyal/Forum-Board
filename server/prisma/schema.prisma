@@ -1,6 +1,7 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 generator client {
@@ -29,6 +30,7 @@ model Thread {
   isLocked    Boolean        @default(false)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  moderationStatus String @default("approved")
 
   @@index([authorId])
 }
@@ -46,6 +48,7 @@ model Comment {
   isDeleted   Boolean     @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  moderationStatus String @default("approved")
 
   @@index([threadId])
   @@index([parentId])

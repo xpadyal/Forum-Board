@@ -1,14 +1,33 @@
 import { prisma } from '../../config.js';
+import { moderateText } from '../utils/moderation.js';
 
 export const createThread = async (authorId, title, content) => {
-    return await prisma.thread.create({
-      data: { authorId, title, content },
-      include: { author: { select: { id: true, username: true } } },
-    });
+    // Moderate both title and content before creating thread
+    try {
+      await moderateText(title);
+      await moderateText(content);
+      
+      // If moderation passes, create thread with approved status
+      return await prisma.thread.create({
+        data: { 
+          authorId, 
+          title, 
+          content,
+          moderationStatus: 'approved'
+        },
+        include: { author: { select: { id: true, username: true } } },
+      });
+    } catch (error) {
+      // If moderation fails, the error will be thrown (content is inappropriate)
+      throw error;
+    }
   };
 
 export const getAllThreads = async () => {
   return await prisma.thread.findMany({
+    where: {
+      moderationStatus: 'approved', // Only show approved threads
+    },
     orderBy: { createdAt: 'desc' },
     include: {
       author: { select: { username: true } },
@@ -23,9 +42,18 @@ export const getThreadById = async (id) => {
       include: {
         author: { select: { username: true, email: true } },
         comments: {
+          where: {
+            moderationStatus: 'approved', // Only show approved comments
+            isDeleted: false,
+          },
           include: {
             author: { select: { username: true } },
-            replies: true,
+            replies: {
+              where: {
+                moderationStatus: 'approved',
+                isDeleted: false,
+              },
+            },
           },
           orderBy: { createdAt: 'asc' },
         },
@@ -39,8 +67,22 @@ export const getThreadById = async (id) => {
   };
 
 export const updateThread = async (id, title, content) => {
-  return await prisma.thread.update({
-    where: { id: Number(id) },
-    data: { title, content },
-  });
+  // Moderate updated content
+  try {
+    await moderateText(title);
+    await moderateText(content);
+    
+    // If moderation passes, update thread with approved status
+    return await prisma.thread.update({
+      where: { id: Number(id) },
+      data: { 
+        title, 
+        content,
+        moderationStatus: 'approved'
+      },
+    });
+  } catch (error) {
+    // If moderation fails, the error will be thrown
+    throw error;
+  }
 };

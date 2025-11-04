@@ -1,4 +1,5 @@
 import { prisma } from '../../config.js';
+import { moderateText } from '../utils/moderation.js';
 
 /**
  * Create a comment or reply
@@ -19,17 +20,27 @@ export const createComment = async (authorId, threadId, parentId, content) => {
     threadReferenceId = parentComment.threadId;
   }
 
-  return await prisma.comment.create({
-    data: {
-      authorId,
-      threadId: threadReferenceId,
-      parentId,
-      content,
-    },
-    include: {
-      author: { select: { username: true } },
-    },
-  });
+  // Moderate content before creating comment
+  try {
+    await moderateText(content);
+    
+    // If moderation passes, create comment with approved status
+    return await prisma.comment.create({
+      data: {
+        authorId,
+        threadId: threadReferenceId,
+        parentId,
+        content,
+        moderationStatus: 'approved',
+      },
+      include: {
+        author: { select: { username: true } },
+      },
+    });
+  } catch (error) {
+    // If moderation fails, the error will be thrown (content is inappropriate)
+    throw error;
+  }
 };
 
 /**
@@ -41,13 +52,23 @@ export const getCommentsByThread = async (threadId) => {
       threadId: Number(threadId),
       parentId: null, // top-level only
       isDeleted: false,
+      moderationStatus: 'approved', // Only show approved comments
     },
     include: {
       author: { select: { username: true } },
       replies: {
+        where: {
+          moderationStatus: 'approved',
+          isDeleted: false,
+        },
         include: {
           author: { select: { username: true } },
-          replies: true, // nested replies recursively
+          replies: {
+            where: {
+              moderationStatus: 'approved',
+              isDeleted: false,
+            },
+          },
         },
       },
     },
