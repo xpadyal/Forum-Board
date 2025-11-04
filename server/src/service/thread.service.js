@@ -1,6 +1,7 @@
 import { prisma } from '../../config.js';
 import { moderateText } from '../utils/moderation.js';
-
+import { generateAutoReply } from '../utils/autoReply.js';
+import { setTimeout } from 'timers/promises';
 export const createThread = async (authorId, title, content) => {
     // Moderate both title and content before creating thread
     try {
@@ -8,7 +9,7 @@ export const createThread = async (authorId, title, content) => {
       await moderateText(content);
       
       // If moderation passes, create thread with approved status
-      return await prisma.thread.create({
+      const thread = await prisma.thread.create({
         data: { 
           authorId, 
           title, 
@@ -17,6 +18,17 @@ export const createThread = async (authorId, title, content) => {
         },
         include: { author: { select: { id: true, username: true } } },
       });
+      // Run delayed reply asynchronously (non-blocking)
+      (async () => {
+        await setTimeout(3000); // 3s delay
+        try {
+          await generateAutoReply(thread);
+        } catch (err) {
+          console.error("ForumBot async error:", err.message);
+        }
+      })();
+
+      return thread;
     } catch (error) {
       // If moderation fails, the error will be thrown (content is inappropriate)
       throw error;

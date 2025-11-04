@@ -45,6 +45,8 @@ Desktop.ini
 # Testing
 coverage/
 .nyc_output/
+server/tests/
+tests/
 
 # Temporary files
 *.tmp
