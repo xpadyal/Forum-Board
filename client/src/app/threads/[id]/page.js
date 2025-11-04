@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getThreadById } from "@/lib/threadApi";
+import { getThreadById, deleteThread } from "@/lib/threadApi";
 import { createComment } from "@/lib/commentApi";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { isAuthenticated } from "@/lib/authApi";
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { formatDate } from "@/utils/threadUtils";
 import Comment from "@/components/Comment";
 
 export default function ThreadDetailPage() {
@@ -14,24 +15,39 @@ export default function ThreadDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const threadId = params.id;
-  const [isAuth, setIsAuth] = useState(false);
+  const { isAuth, user: currentUser } = useAuth();
   const [commentContent, setCommentContent] = useState("");
   const [commentError, setCommentError] = useState("");
+  const [enablePolling, setEnablePolling] = useState(false);
+  const pollingTimeoutRef = useRef(null);
 
+  // Enable polling after comment creation, disable after 10 seconds
   useEffect(() => {
-    setIsAuth(isAuthenticated());
-    const handleAuthStateChange = () => {
-      setIsAuth(isAuthenticated());
-    };
-    window.addEventListener("authStateChange", handleAuthStateChange);
-    return () => {
-      window.removeEventListener("authStateChange", handleAuthStateChange);
-    };
-  }, []);
+    if (enablePolling) {
+      // Clear any existing timeout
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+      }
+      // Disable polling after 10 seconds (ForumBot replies within ~4-5 seconds)
+      pollingTimeoutRef.current = setTimeout(() => {
+        setEnablePolling(false);
+      }, 10000);
+
+      return () => {
+        if (pollingTimeoutRef.current) {
+          clearTimeout(pollingTimeoutRef.current);
+        }
+      };
+    }
+  }, [enablePolling]);
 
   const { data: thread, isLoading, error } = useQuery({
     queryKey: ["thread", threadId],
     queryFn: () => getThreadById(threadId),
+    // Poll every 2 seconds when enabled (to catch ForumBot replies created asynchronously)
+    refetchInterval: enablePolling ? 2000 : false,
+    // Keep refetching even when window is not focused
+    refetchIntervalInBackground: enablePolling,
   });
 
   const createCommentMutation = useMutation({
@@ -40,11 +56,50 @@ export default function ThreadDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["thread", threadId] });
       setCommentContent("");
       setCommentError("");
+      // Enable polling to catch ForumBot's async reply (created ~2-4 seconds later)
+      setEnablePolling(true);
     },
     onError: (error) => {
-      setCommentError(error.message || "Failed to post comment. Please try again.");
+      // Check if error is from moderation (400 status with inappropriate content message)
+      const isModerationError = 
+        error.status === 400 && 
+        (error.message?.includes("inappropriate") || 
+         error.message?.includes("unsafe") ||
+         error.message?.includes("flagged"));
+      
+      setCommentError(
+        isModerationError
+          ? "Your comment was flagged as inappropriate. Please revise your content and try again."
+          : error.message || "Failed to post comment. Please try again."
+      );
     },
   });
+
+  const deleteThreadMutation = useMutation({
+    mutationFn: deleteThread,
+    onSuccess: () => {
+      // Invalidate threads queries to refetch the updated list
+      queryClient.invalidateQueries({ queryKey: ["threads"] });
+      // Also invalidate the specific thread query
+      queryClient.invalidateQueries({ queryKey: ["thread", threadId] });
+      router.push("/threads");
+    },
+    onError: (error) => {
+      setCommentError(error.message || "Failed to delete thread. Please try again.");
+    },
+  });
+
+  const handleDeleteThread = () => {
+    if (window.confirm("Are you sure you want to delete this thread? This action cannot be undone.")) {
+      deleteThreadMutation.mutate(threadId);
+    }
+  };
+
+  // Check if current user is thread owner or admin
+  const currentUserId = currentUser?.id ? String(currentUser.id) : null;
+  const threadAuthorId = thread?.authorId ? String(thread.authorId) : null;
+  const isAdmin = currentUser?.role === 'admin';
+  const canDeleteThread = isAuth && currentUserId && (isAdmin || currentUserId === threadAuthorId);
 
   const handleCommentSubmit = (e) => {
     e.preventDefault();
@@ -111,11 +166,20 @@ export default function ThreadDetailPage() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {thread.title}
           </h1>
+          {canDeleteThread && (
+            <button
+              onClick={handleDeleteThread}
+              disabled={deleteThreadMutation.isPending}
+              className="px-3 py-1.5 text-sm bg-red-600 dark:bg-red-500 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {deleteThreadMutation.isPending ? "Deleting..." : "Delete Thread"}
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6">
           <span>By {thread.author?.username || "Unknown"}</span>
-          <span>{new Date(thread.createdAt).toLocaleString()}</span>
+          <span>{formatDate(thread.createdAt, true)}</span>
           {thread.updatedAt !== thread.createdAt && (
             <span className="text-xs">(edited)</span>
           )}
@@ -272,6 +336,7 @@ export default function ThreadDetailPage() {
                 <Comment
                   comment={comment}
                   threadId={threadId}
+                  threadAuthorId={threadAuthorId}
                   depth={0}
                   maxDepth={5}
                 />

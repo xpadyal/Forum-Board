@@ -2,15 +2,26 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createComment } from "@/lib/commentApi";
-import { isAuthenticated } from "@/lib/authApi";
+import { createComment, deleteComment } from "@/lib/commentApi";
+import { useAuth } from "@/hooks/useAuth";
 
-export default function Comment({ comment, threadId, depth = 0, maxDepth = 5 }) {
+export default function Comment({ comment, threadId, threadAuthorId, depth = 0, maxDepth = 5 }) {
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [replyError, setReplyError] = useState("");
   const queryClient = useQueryClient();
-  const isAuth = isAuthenticated();
+  const { isAuth, user: currentUser } = useAuth();
+  
+  const currentUserId = currentUser?.id ? String(currentUser.id) : null;
+  const commentAuthorId = comment.authorId ? String(comment.authorId) : null;
+  const isAdmin = currentUser?.role === 'admin';
+  
+  // Check if user can delete this comment (comment owner OR thread owner OR admin)
+  const canDelete = isAuth && currentUserId && (
+    isAdmin ||
+    currentUserId === commentAuthorId || 
+    currentUserId === threadAuthorId
+  );
 
   const createReplyMutation = useMutation({
     mutationFn: createComment,
@@ -19,11 +30,31 @@ export default function Comment({ comment, threadId, depth = 0, maxDepth = 5 }) 
       setReplyContent("");
       setReplyError("");
       setIsReplying(false);
+      // Trigger a refetch after 3 seconds to catch ForumBot's reply if user replied to ForumBot
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["thread", threadId] });
+      }, 3000);
     },
     onError: (error) => {
       setReplyError(error.message || "Failed to post reply. Please try again.");
     },
   });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: deleteComment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["thread", threadId] });
+    },
+    onError: (error) => {
+      setReplyError(error.message || "Failed to delete comment. Please try again.");
+    },
+  });
+
+  const handleDelete = () => {
+    if (window.confirm("Are you sure you want to delete this comment?")) {
+      deleteCommentMutation.mutate(comment.id);
+    }
+  };
 
   const handleReplySubmit = (e) => {
     e.preventDefault();
@@ -60,6 +91,13 @@ export default function Comment({ comment, threadId, depth = 0, maxDepth = 5 }) 
           <span className={`font-semibold ${depth === 0 ? 'text-gray-900 dark:text-white' : 'text-gray-800 dark:text-gray-200 text-sm'}`}>
             {comment.author?.username || "Unknown"}
           </span>
+          {/* ForumBot Badge */}
+          {(comment.author?.username === "ForumBot" || 
+            comment.author?.username?.toLowerCase() === "forumbot") && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
+              🤖 ForumBot
+            </span>
+          )}
           <span className={`text-gray-500 dark:text-gray-400 ${depth === 0 ? 'text-sm' : 'text-xs'}`}>
             {new Date(comment.createdAt).toLocaleString()}
           </span>
@@ -68,15 +106,26 @@ export default function Comment({ comment, threadId, depth = 0, maxDepth = 5 }) 
           {comment.content}
         </p>
 
-        {/* Reply Button */}
-        {canReply && (
-          <button
-            onClick={() => setIsReplying(!isReplying)}
-            className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            {isReplying ? "Cancel" : "Reply"}
-          </button>
-        )}
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3 mt-2">
+          {canReply && (
+            <button
+              onClick={() => setIsReplying(!isReplying)}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              {isReplying ? "Cancel" : "Reply"}
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={handleDelete}
+              disabled={deleteCommentMutation.isPending}
+              className="text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deleteCommentMutation.isPending ? "Deleting..." : "Delete"}
+            </button>
+          )}
+        </div>
 
         {/* Reply Form */}
         {isReplying && (
@@ -120,15 +169,16 @@ export default function Comment({ comment, threadId, depth = 0, maxDepth = 5 }) 
       {/* Nested Replies */}
       {comment.replies && comment.replies.length > 0 && (
         <div className="space-y-3 mt-3">
-          {comment.replies.map((reply) => (
-            <Comment
-              key={reply.id}
-              comment={reply}
-              threadId={threadId}
-              depth={depth + 1}
-              maxDepth={maxDepth}
-            />
-          ))}
+            {comment.replies.map((reply) => (
+              <Comment
+                key={reply.id}
+                comment={reply}
+                threadId={threadId}
+                threadAuthorId={threadAuthorId}
+                depth={depth + 1}
+                maxDepth={maxDepth}
+              />
+            ))}
         </div>
       )}
     </div>

@@ -3,6 +3,9 @@ import { prisma } from '../../config.js';
 
 /**
  * Checks ownership of a resource (thread/comment)
+ * - Thread: Only the thread owner can delete/modify their thread
+ * - Comment: The comment owner OR the thread owner can delete the comment
+ * - Admin: Admin users can delete/modify any resource
  * @param {"thread" | "comment"} type - The resource type to check
  */
 
@@ -15,21 +18,49 @@ export const verifyOwnership = (type) => {
         }
         
         const userId = BigInt(req.user.id);
-        const resourceId = BigInt(req.params.id);
+        const resourceId = Number(req.params.id);
   
-        // Fetch resource based on type
-        const resource =
-          type === 'thread'
-            ? await prisma.thread.findUnique({ where: { id: Number(resourceId) }, select: { authorId: true } })
-            : await prisma.comment.findUnique({ where: { id: Number(resourceId) }, select: { authorId: true } });
-  
-        if (!resource) {
-          return next(new AppError(`${type} not found`, 404));
+        // Admin users can delete anything
+        if (req.user.role === 'admin') {
+          return next();
         }
+
+        if (type === 'thread') {
+          // Check if user is the thread owner
+          const thread = await prisma.thread.findUnique({ 
+            where: { id: resourceId }, 
+            select: { authorId: true } 
+          });
   
-        // Check if user is the owner or admin
-        if (req.user.role !== 'admin' && resource.authorId !== userId) {
-          return next(new AppError('Not authorized to modify this resource', 403));
+          if (!thread) {
+            return next(new AppError('Thread not found', 404));
+          }
+  
+          if (thread.authorId !== userId) {
+            return next(new AppError('Not authorized to modify this thread', 403));
+          }
+        } else if (type === 'comment') {
+          // For comments: check if user is comment owner OR thread owner
+          const comment = await prisma.comment.findUnique({ 
+            where: { id: resourceId },
+            include: {
+              thread: {
+                select: { authorId: true }
+              }
+            }
+          });
+  
+          if (!comment) {
+            return next(new AppError('Comment not found', 404));
+          }
+  
+          const isCommentOwner = comment.authorId === userId;
+          const isThreadOwner = comment.thread.authorId === userId;
+  
+          // Allow if user is comment owner OR thread owner
+          if (!isCommentOwner && !isThreadOwner) {
+            return next(new AppError('Not authorized to delete this comment', 403));
+          }
         }
   
         next();

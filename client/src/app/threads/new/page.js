@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createThread } from "@/lib/threadApi";
 import { uploadFile } from "@/lib/uploadApi";
-import { isAuthenticated } from "@/lib/authApi";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function NewThreadPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { isAuth } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -19,20 +20,34 @@ export default function NewThreadPage() {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (!isAuthenticated()) {
+    if (!isAuth) {
       router.push("/login?redirect=/threads/new");
     }
-  }, [router]);
+  }, [isAuth, router]);
 
   const createThreadMutation = useMutation({
     mutationFn: createThread,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["threads"] });
-      router.push("/threads");
+      // Redirect to the newly created thread detail page
+      if (data?.id) {
+        router.push(`/threads/${data.id}`);
+      } else {
+        router.push("/threads");
+      }
     },
     onError: (error) => {
+      // Check if error is from moderation (400 status with inappropriate content message)
+      const isModerationError = 
+        error.status === 400 && 
+        (error.message?.includes("inappropriate") || 
+         error.message?.includes("unsafe") ||
+         error.message?.includes("flagged"));
+      
       setErrors({
-        submit: error.message || "Failed to create thread. Please try again.",
+        submit: isModerationError
+          ? "Your post was flagged as inappropriate. Please revise your content and try again."
+          : error.message || "Failed to create thread. Please try again.",
       });
     },
   });
@@ -50,13 +65,12 @@ export default function NewThreadPage() {
 
     try {
       for (const file of files) {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const uploaded = await uploadFile(formData);
+        const uploaded = await uploadFile(file);
+        // Backend returns: { status: 'success', message: '...', data: { fileUrl, mimeType } }
+        const fileData = uploaded.data || uploaded;
         attachments.push({
-          fileUrl: uploaded.fileUrl,
-          mimeType: uploaded.mimeType,
+          fileUrl: fileData.fileUrl,
+          mimeType: fileData.mimeType,
         });
       }
     } catch (error) {
