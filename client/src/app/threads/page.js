@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getAllThreads } from "@/lib/threadApi";
+import Link from "next/link";
+import { useState, useEffect } from "react";
 import { isAuthenticated } from "@/lib/authApi";
 
-export default function HomePage() {
-  const [isAuth, setIsAuth] = useState(false);
+export default function ThreadsPage() {
   const [page, setPage] = useState(1);
+  const [isAuth, setIsAuth] = useState(false);
   const limit = 10;
 
   useEffect(() => {
@@ -33,21 +33,33 @@ export default function HomePage() {
     queryFn: () => getAllThreads(page, limit),
   });
 
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <div className="text-center">Loading threads...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <div className="text-center text-red-600">
+          Error loading threads: {error.message}
+        </div>
+      </div>
+    );
+  }
+
   const threads = data?.threads || [];
   const pagination = data?.pagination || {};
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header Section */}
       <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Forum Board
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            A modern platform for discussions and community engagement
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          All Threads
+        </h1>
         {isAuth && (
           <Link
             href="/threads/new"
@@ -58,44 +70,9 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Show login prompt for non-authenticated users */}
-      {!isAuth && (
-        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <p className="text-sm text-blue-800 dark:text-blue-300">
-            <Link
-              href="/login"
-              className="font-medium hover:underline mr-1"
-            >
-              Login
-            </Link>
-            or
-            <Link
-              href="/register"
-              className="font-medium hover:underline ml-1"
-            >
-              Register
-            </Link>
-            to create new threads and participate in discussions.
-          </p>
-        </div>
-      )}
-
-      {/* Threads Section */}
-      {isLoading ? (
-        <div className="text-center py-12">
-          <div className="text-gray-600 dark:text-gray-400">Loading threads...</div>
-        </div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <div className="text-red-600 dark:text-red-400">
-            Error loading threads: {error.message}
-          </div>
-        </div>
-      ) : threads.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">
-            No threads yet.
-          </p>
+      {threads.length === 0 ? (
+        <div className="text-center py-12 text-gray-600 dark:text-gray-400">
+          <p className="text-lg mb-4">No threads yet.</p>
           {isAuth ? (
             <Link
               href="/threads/new"
@@ -104,7 +81,7 @@ export default function HomePage() {
               Create the first thread
             </Link>
           ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-500">
+            <p className="text-sm">
               <Link
                 href="/register"
                 className="text-blue-600 dark:text-blue-400 hover:underline"
@@ -117,7 +94,7 @@ export default function HomePage() {
         </div>
       ) : (
         <>
-          <div className="space-y-4 mb-8">
+          <div className="space-y-4">
             {threads.map((thread) => {
               const imageAttachments = thread.attachments?.filter(
                 (att) => att.mimeType?.startsWith("image/")
@@ -229,7 +206,7 @@ export default function HomePage() {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex justify-center items-center gap-4">
+            <div className="flex justify-center items-center gap-4 mt-8">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
@@ -254,3 +231,4 @@ export default function HomePage() {
     </div>
   );
 }
+

@@ -106,9 +106,9 @@ export default function Navbar() {
 
             {isAuth && (
               <Link
-                href="/threads/create"
+                href="/threads/new"
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive("/threads/create")
+                  isActive("/threads/new")
                     ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                     : "bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600"
                 }`}
@@ -231,10 +231,10 @@ export default function Navbar() {
 
             {isAuth && (
               <Link
-                href="/threads/create"
+                href="/threads/new"
                 onClick={closeMobileMenu}
                 className={`block px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive("/threads/create")
+                  isActive("/threads/new")
                     ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                     : "bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600"
                 }`}

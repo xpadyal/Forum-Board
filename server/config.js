@@ -39,7 +39,7 @@ export const supabaseConfig = {
 
 // Initialize and export Prisma Client
 export const prisma = new PrismaClient({
-  log: config.nodeEnv === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  log: ['error', 'warn'],
 });
 
 // Graceful shutdown for Prisma
